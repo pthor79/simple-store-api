@@ -1,4 +1,6 @@
-﻿namespace SimpleStore.Api.Contracts
+﻿using SimpleStore.Api.Models;
+
+namespace SimpleStore.Api.Contracts
 {
     public interface IGenericRepository<T> where T : class
     {
@@ -7,5 +9,6 @@
         Task UpdateAsync(T entity);        
         Task<T> AddAsync(T entity);
         Task<bool> Exists(int id);
+        Task<PagedResult<TResult>> GetAllAsync<TResult>(QueryParameters queryParameters);
     }
 }

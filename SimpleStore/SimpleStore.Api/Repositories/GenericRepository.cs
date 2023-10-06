@@ -1,15 +1,20 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.EntityFrameworkCore;
 using SimpleStore.Api.Contracts;
+using SimpleStore.Api.Models;
 
 namespace SimpleStore.Api.Repositories
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         private readonly SimpleStoreDbContext _context;
+        private readonly IMapper _mapper;
 
-        public GenericRepository(SimpleStoreDbContext context)
+        public GenericRepository(SimpleStoreDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         public async Task<T> AddAsync(T entity)
@@ -30,6 +35,24 @@ namespace SimpleStore.Api.Repositories
             return await _context.Set<T>().ToListAsync();
         }
 
+        public async Task<PagedResult<TResult>> GetAllAsync<TResult>(QueryParameters queryParameters)
+        {
+            var totalSize = await _context.Set<T>().CountAsync();
+            var items = await _context.Set<T>()
+                .Skip(queryParameters.StartIndex)
+                .Take(queryParameters.PageSize)
+                .ProjectTo<TResult>(_mapper.ConfigurationProvider)
+                .ToListAsync();
+
+            return new PagedResult<TResult>
+            {
+                Items = items,
+                PageNumber = queryParameters.StartIndex,
+                RecordNumber = queryParameters.PageSize,
+                TotalCount = totalSize
+            };
+        }
+
         public async Task<T> GetByIdAsync(int? id)
         {
             if (id is null)
@@ -42,7 +65,7 @@ namespace SimpleStore.Api.Repositories
 
         public async Task UpdateAsync(T entity)
         {
-           _context.Update(entity);
+            _context.Update(entity);
             await _context.SaveChangesAsync();
         }
     }

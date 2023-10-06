@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ namespace SimpleStore.Api.Controllers
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/{v:apiVersion}/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class ProductsController : ControllerBase
     {
 
@@ -27,6 +28,9 @@ namespace SimpleStore.Api.Controllers
             _productsRepository = productsRepository;
         }
 
+        /// <summary>
+        /// Returns a list of products
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GetProductDto>>> GetProducts()
         {
@@ -36,7 +40,14 @@ namespace SimpleStore.Api.Controllers
             return Ok(productDtos);
         }
 
+        /// <summary>
+        /// Returns product by id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(Product), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
             var product = await _productsRepository.GetByIdAsync(id);
@@ -51,7 +62,15 @@ namespace SimpleStore.Api.Controllers
             return Ok(productDto);
         }
 
+        /// <summary>
+        /// Create new product
+        /// </summary>
+        /// <param name="createProductDto"></param>
+        /// <returns></returns>
         [HttpPost]
+        [Consumes(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Product>> PostProduct(CreateProductDto createProductDto)
         {
             var product = _mapper.Map<Product>(createProductDto);
@@ -68,7 +87,16 @@ namespace SimpleStore.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Update existing product description
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="updateProductDto"></param>
+        /// <returns></returns>
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PutProduct(int id, UpdateProductDto updateProductDto)
         {
 
