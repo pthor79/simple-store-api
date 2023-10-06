@@ -2,91 +2,112 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SimpleStore.Api.Contracts;
 using SimpleStore.Api.Data;
+using SimpleStore.Api.Models;
 
 namespace SimpleStore.Api.Controllers
-{   
+{
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/{v:apiVersion}/[controller]")]
     public class ProductsController : ControllerBase
     {
-        private readonly SimpleStoreDbContext _context;
 
-        public ProductsController(SimpleStoreDbContext context)
+        private readonly IMapper _mapper;
+        private readonly IProductsRepository _productsRepository;
+
+        public ProductsController(IMapper mapper, IProductsRepository productsRepository)
         {
-            _context = context;
+            _mapper = mapper;
+            _productsRepository = productsRepository;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        public async Task<ActionResult<IEnumerable<GetProductDto>>> GetProducts()
         {
-            if (_context.Products == null)
-            {
-                return Problem("Entity set 'Products' is null.");
-            }
+            var products = await _productsRepository.GetAllAsync();
+            var productDtos = _mapper.Map<IEnumerable<GetProductDto>>(products);
 
-            return await _context.Products.ToListAsync();
+            return Ok(productDtos);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            if (_context.Products == null)
-            {
-                return Problem("Entity set 'Products' is null.");
-            }
-
-            var product = await _context.Products.FindAsync(id);
+            var product = await _productsRepository.GetByIdAsync(id);
 
             if (product == null)
             {
                 return NotFound();
             }
 
-            return product;
+            var productDto = _mapper.Map<GetProductDto>(product);
+
+            return Ok(productDto);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<Product>> PostProduct(CreateProductDto createProductDto)
+        {
+            var product = _mapper.Map<Product>(createProductDto);
+
+            try
+            {
+                await _productsRepository.AddAsync(product);
+
+                return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw;
+            }
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProduct(int id, Product product)
+        public async Task<IActionResult> PutProduct(int id, UpdateProductDto updateProductDto)
         {
-            if (_context.Products == null)
-            {
-                return Problem("Entity set 'Products' is null.");
-            }
 
-            if (id != product.Id)
+            if (id != updateProductDto.Id)
             {
                 return BadRequest();
             }
 
-            _context.Entry(product).State = EntityState.Modified;
+            var foundProduct = await _productsRepository.GetByIdAsync(id);
+
+            if (foundProduct is null)
+            {
+                return NotFound();
+            }
+
+            _mapper.Map(updateProductDto, foundProduct);
 
             try
             {
-              await _context.SaveChangesAsync();
+                await _productsRepository.UpdateAsync(foundProduct);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ProductExists(id))
+                if (!await ProductExists(id))
                 {
-                  return NotFound();
+                    return NotFound();
                 }
                 else
                 {
-                  throw;
+                    throw;
                 }
             }
 
             return NoContent();
         }
 
-        private bool ProductExists(int id)
+        private async Task<bool> ProductExists(int id)
         {
-          return (_context.Products?.Any(e => e.Id == id)).GetValueOrDefault();
+            return await _productsRepository.Exists(id);
         }
     }
 }
