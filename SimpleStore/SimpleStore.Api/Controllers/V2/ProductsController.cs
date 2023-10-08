@@ -9,13 +9,11 @@ namespace SimpleStore.Api.Controllers.V2
     [ApiVersion("2.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class ProductsController : ControllerBase
-    {
-        private readonly IMapper _mapper;
+    {       
         private readonly IProductsRepository _productsRepository;
 
-        public ProductsController(IMapper mapper, IProductsRepository productsRepository)
-        {
-            _mapper = mapper;
+        public ProductsController(IProductsRepository productsRepository)
+        {           
             _productsRepository = productsRepository;
         }
 
